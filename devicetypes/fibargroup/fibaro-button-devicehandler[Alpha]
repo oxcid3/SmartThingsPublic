@@ -1,0 +1,322 @@
+/**
+ *  Copyright 2015 Owens
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ *
+ *  Version 0.0.1
+ *  Author: OwenS
+ *  Date: 2016-08-23
+ *
+ * Configuration code from Stuart Buchanan
+ */
+ 
+metadata {
+	definition (name: "Fibaro Button Device Handler", namespace: "Z-Wave.me", author: "OwenS") {
+    //Totally ripped off from AdamV's ("Secure Wall Controllers & Key Fobs (Z-Wave.me, Popp & Devolo)", namespace: "Z-Wave.me", author: "AdamV") {
+    
+		capability "Actuator"
+		capability "Button"
+        capability "Battery"
+		capability "Configuration" 
+       	capability "Refresh"
+
+        
+		fingerprint deviceId: "0x1801", inClusters: "0x5E, 0x70, 0x85, 0x2D, 0x8E, 0x80, 0x84, 0x8F, 0x5A, 0x59, 0x5B, 0x73, 0x86, 0x72", outClusters: "0x20, 0x5B, 0x26, 0x27, 0x2B, 0x60"
+   		fingerprint deviceId: "0x1202", inClusters: "0x5E, 0x8F, 0x73, 0x98, 0x86, 0x72, 0x70, 0x85, 0x2D, 0x8E, 0x80, 0x84, 0x5A, 0x59, 0x5B", outClusters:  "0x20, 0x5B, 0x26, 0x27, 0x2B, 0x60"												
+   }
+
+	simulator {
+		status "button 1 pushed":  "command: 9881, payload: 00 5B 03 DE 00 01"
+		
+        // need to redo simulator commands
+
+	}
+	tiles {
+		standardTile("button", "device.button", width: 2, height: 2) {
+			state "default", label: "", icon: "st.Home.home30", backgroundColor: "#ffffff"
+            state "held", label: "holding", icon: "st.Home.home30", backgroundColor: "#C390D4"
+        }
+    	 valueTile("battery", "device.battery", inactiveLabel: false, decoration: "flat") {
+         	tileAttribute ("device.battery", key: "PRIMARY_CONTROL"){
+                        state "battery", label:'${currentValue}% battery', unit:""
+        	}
+        }
+        standardTile("configure", "device.button", width: 1, height: 1, decoration: "flat") {
+			state "default", label: "configure", backgroundColor: "#ffffff", action: "configure"
+        }
+        
+        main "button"
+		details(["button", "battery", "configure"])
+	}
+    
+}
+
+def parse(String description) {
+	def results = []
+   log.debug("RAW command: $description")
+	if (description.startsWith("Err")) {
+		log.debug("An error has occurred")
+		} 
+    else {
+       
+       	def cmd = zwave.parse(description.replace("98C1", "9881",), [0x98: 1, 0x20: 1, 0x84: 1, 0x80: 1, 0x60: 3, 0x2B: 1, 0x26: 1])
+        log.debug "Parsed Command: $cmd"
+        if (cmd) {
+       	results = zwaveEvent(cmd)
+		}
+    }
+}
+  
+
+def zwaveEvent(physicalgraph.zwave.commands.securityv1.SecurityMessageEncapsulation cmd) {
+        def encapsulatedCommand = cmd.encapsulatedCommand([0x98: 1, 0x20: 1])
+		//		log.debug("UnsecuredCommand: $encapsulatedCommand")
+        // can specify command class versions here like in zwave.parse
+        if (encapsulatedCommand) {
+        	//	log.debug("UnsecuredCommand: $encapsulatedCommand")
+                return zwaveEvent(encapsulatedCommand)
+        }
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotification cmd) {
+		log.debug( "keyAttributes: $cmd.keyAttributes")
+       // log.debug( "sceneNumber: $cmd.sceneNumber")
+       // log.debug( "sequenceNumber: $cmd.sequenceNumber")
+      //	log.debug( "payload: $cmd.payload")
+      
+   
+    
+    if ( cmd.keyAttributes == 0 ) {
+        	Integer button = 1
+            sendEvent(name: "button", value: "pushed", data: [buttonNumber: button], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+        	log.debug( "Button $button was pushed (Single Click)" )
+            }
+            
+   	else if  ( cmd.keyAttributes == 2 ) {
+        	Integer button = 1
+            sendEvent(name: "button", value: "held", data: [buttonNumber: button], descriptionText: "Button $button is closed", isStateChange: true)
+            log.debug( "Button $button Hold start" )
+            }
+    else if  ( cmd.keyAttributes == 1 ) {
+        	Integer button = 1
+            sendEvent(name: "button", value: "pushed", data: [buttonNumber: button], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            log.debug( "Button $button Hold stop" )
+            }
+            
+   	else if  ( cmd.keyAttributes == 3 ) {
+			Integer button = 2
+			sendEvent(name: "button", value: "pushed", data: [buttonNumber: button], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            log.debug( "Button $button was pushed (Double Click)" )
+            }
+
+
+    else if  ( cmd.keyAttributes == 4 ) {
+			Integer button = 3
+			sendEvent(name: "button", value: "pushed", data: [buttonNumber: button], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            log.debug( "Button $button was pushed (Triple Click)" )
+            }
+            
+    else if  ( cmd.keyAttributes == 5 ) {
+			Integer button = 4
+			sendEvent(name: "button", value: "pushed", data: [buttonNumber: button], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            log.debug( "Button $button was pressed (Quadruple Click)" )
+            }
+            
+     else if  ( cmd.keyAttributes == 6 ) {
+			Integer button = 5
+			sendEvent(name: "button", value: "pushed", data: [buttonNumber: button], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            log.debug( "Button $button was clicked (5 is Clicks)" )
+            }
+   
+	/* else if  ( cmd.sceneId == 31 ) {
+        	Integer button = 3
+            sendEvent(name: "button", value: "pushed", data: [buttonNumber: button], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+        	log.debug( "Button $button was pushed" )
+            }
+    else if  ( cmd.sceneId == 32 ) {
+			Integer button = 3
+            def patchButton = button + 4
+			sendEvent(name: "button", value: "pushed", data: [buttonNumber: patchButton], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            sendEvent(name: "button", value: "doubleClick", data: [buttonNumber: button], descriptionText: "$device.displayName Button $button was Double Clicked", isStateChange: true)
+            log.debug( "Button $button was Double Clicked" )
+            }
+    else if  ( cmd.sceneId == 33 ) {
+        	Integer button = 3
+            sendEvent(name: "button", value: "held", data: [buttonNumber: button], descriptionText: "Button $button is closed")
+        	log.debug( "Button $button Hold start" )
+            }
+    else if  ( cmd.sceneId == 34 ) {
+			Integer button = 3
+            def patchButton = button + 4
+			sendEvent(name: "button", value: "held", data: [buttonNumber: patchButton], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            sendEvent(name: "button", value: "clickHoldStart", data: [buttonNumber: button], descriptionText: "$device.displayName Button $button Click-Hold Started", isStateChange: true)
+            log.debug( "Button $button Click-Hold Started" )
+            }
+   	else if  ( cmd.sceneId == 35 ) {
+        	Integer button = 3
+            def patchButton = button + 8
+            sendEvent(name: "button", value: "pushed", data: [buttonNumber: patchButton], descriptionText: "$device.displayName button $button was held", isStateChange: true)
+            sendEvent(name: "button", value: "holdRelease", data: [buttonNumber: button], descriptionText: "Button $button is open")
+        	log.debug( "Button $button Hold stop" )
+            }
+    else if  ( cmd.sceneId == 36 ) {
+			Integer button = 3
+            def patchButton = button + 8
+			sendEvent(name: "button", value: "held", data: [buttonNumber: patchButton], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            sendEvent(name: "button", value: "clickHoldStop", data: [buttonNumber: button], descriptionText: "$device.displayName Button $button Click-Hold Stopped", isStateChange: true)
+            log.debug( "Button $button Click-Hold Stopped" )
+            }
+    else if ( cmd.sceneId == 41 ) {
+        	Integer button = 4
+            sendEvent(name: "button", value: "pushed", data: [buttonNumber: button], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+        	log.debug( "Button $button was pushed" )
+            }
+    else if  ( cmd.sceneId == 42 ) {
+			Integer button = 4
+            def patchButton = button + 4
+			sendEvent(name: "button", value: "pushed", data: [buttonNumber: patchButton], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+            sendEvent(name: "button", value: "doubleClick", data: [buttonNumber: button], descriptionText: "$device.displayName Button $button was Double Clicked", isStateChange: true)
+            log.debug( "Button $button was Double Clicked" )
+            }
+    else if  ( cmd.sceneId == 43 ) {
+        	Integer button = 4
+            sendEvent(name: "button", value: "held", data: [buttonNumber: button], descriptionText: "Button $button is closed")
+        	log.debug( "Button $button Hold start" )
+            }
+    else if  ( cmd.sceneId == 44 ) {
+			Integer button = 4
+            def patchButton = button + 4
+			sendEvent(name: "button", value: "held", data: [buttonNumber: patchButton], descriptionText: "$device.displayName button $patchButton was held", isStateChange: true)
+            sendEvent(name: "button", value: "clickHoldStart", data: [buttonNumber: button], descriptionText: "$device.displayName Button $button Click-Hold Started", isStateChange: true)
+            log.debug( "Button $button Click-Hold Started" )
+            }
+   	else if  ( cmd.sceneId == 45 ) {
+        	Integer button = 4
+            def patchButton = button + 8
+            sendEvent(name: "button", value: "pushed", data: [buttonNumber: patchButton], descriptionText: "$device.displayName button $button was held", isStateChange: true)
+            sendEvent(name: "button", value: "holdRelease", data: [buttonNumber: button], descriptionText: "Button $button is open")
+        	log.debug( "Button $button Hold stop" )
+            }
+    else if  ( cmd.sceneId == 46 ) {
+			Integer button = 4
+            def patchButton = button + 8
+            sendEvent(name: "button", value: "held", data: [buttonNumber: patchButton], descriptionText: "$device.displayName button $button was pushed", isStateChange: true)
+			sendEvent(name: "button", value: "clickHoldStop", data: [buttonNumber: button], descriptionText: "$device.displayName Button $button Click-Hold Stopped", isStateChange: true)
+            log.debug( "Button $button Click-Hold Stopped" )
+            }
+       */
+    else {
+        	log.debug( "Commands and Button ID combinations unaccounted for happened" )
+            }
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.wakeupv2.WakeUpNotification cmd) {
+	[ createEvent(descriptionText: "${device.displayName} woke up"),
+	  response(zwave.wakeUpV2.wakeUpNoMoreInformation()) ]
+} 
+
+
+
+def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv2.SwitchMultilevelGet cmd) {
+	log.debug "Multilevel get: $cmd"
+}
+def zwaveEvent(physicalgraph.zwave.commands.switchmultilevelv1.SwitchMultilevelReport cmd) {
+	log.debug "Multilevel report: $cmd.sensorValue"
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
+        def map = [ name: "battery", unit: "%" ]
+        if (cmd.batteryLevel == 0xFF) {  // Special value for low battery alert
+                map.value = 1
+                map.descriptionText = "${device.displayName} has a low battery"
+                map.isStateChange = true
+        } else {
+                map.value = cmd.batteryLevel
+                log.debug ("Battery: $cmd.batteryLevel")
+        }
+        // Store time of last battery update so we don't ask every wakeup, see WakeUpNotification handler
+        state.lastbatt = new Date().time
+        createEvent(map)
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.basicv1.BasicReport cmd){
+        log.debug "basic event: $cmd.value"
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.crc16encapv1.Crc16Encap cmd)
+{
+	def versions = [0x31: 2, 0x30: 1, 0x84: 1, 0x9C: 1, 0x70: 2]
+	// def encapsulatedCommand = cmd.encapsulatedCommand(versions)
+	def version = versions[cmd.commandClass as Integer]
+	def ccObj = version ? zwave.commandClass(cmd.commandClass, version) : zwave.commandClass(cmd.commandClass)
+	def encapsulatedCommand = ccObj?.command(cmd.command)?.parse(cmd.data)
+	if (!encapsulatedCommand) {
+		log.debug "Could not extract command from $cmd"
+	} else {
+		zwaveEvent(encapsulatedCommand)
+	}
+}
+
+def zwaveEvent(physicalgraph.zwave.commands.sceneactivationv1.SceneActivationSet cmd) {
+	// log.debug( "Dimming Duration: $cmd.dimmingDuration")
+     log.debug( "Button code: $cmd.sceneId")
+}
+ 
+
+
+  def configure() {
+    
+ 
+    def commands = [ ]
+			log.debug "Resetting Sensor Parameters to SmartThings Compatible Defaults"
+	def cmds = []
+    cmds << zwave.associationV1.associationSet(groupingIdentifier: 1, nodeId: zwaveHubNodeId).format()
+    cmds << zwave.associationV1.associationSet(groupingIdentifier: 2, nodeId: zwaveHubNodeId).format()
+    cmds << zwave.associationV1.associationSet(groupingIdentifier: 3, nodeId: zwaveHubNodeId).format()
+    cmds << zwave.associationV1.associationSet(groupingIdentifier: 4, nodeId: zwaveHubNodeId).format()
+    cmds << zwave.associationV1.associationSet(groupingIdentifier: 5, nodeId: zwaveHubNodeId).format()
+	cmds << zwave.configurationV1.configurationSet(configurationValue: [0], parameterNumber: 1, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [0], parameterNumber: 2, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [4], parameterNumber: 11, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [4], parameterNumber: 12, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [4], parameterNumber: 13, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [4], parameterNumber: 14, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [1], parameterNumber: 21, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [0], parameterNumber: 22, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [2], parameterNumber: 24, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [0], parameterNumber: 25, size: 1).format()
+    cmds << zwave.configurationV1.configurationSet(configurationValue: [1], parameterNumber: 30, size: 1).format()
+    
+    delayBetween(cmds, 500)
+}
+       
+
+
+/*
+// Correct configure for dim events:
+
+    for (def i = 11; i <= 12; i++) {
+      	commands << zwave.associationV1.associationSet(groupingIdentifier: 2, nodeId: zwaveHubNodeId).format()
+   // 	commands << zwave.sceneControllerConfV1.sceneControllerConfSet(groupId: 4, sceneId:i).format()
+       commands << zwave.configurationV1.configurationSet(parameterNumber:i, size: 1, scaledConfigurationValue:4).format()
+	}
+        for (def i = 13; i <= 14; i++) {
+      	commands << zwave.associationV1.associationSet(groupingIdentifier: 3, nodeId: zwaveHubNodeId).format()
+    //	commands << zwave.sceneControllerConfV1.sceneControllerConfSet(groupId: 5, sceneId:i).format()
+       commands << zwave.configurationV1.configurationSet(parameterNumber:i, size: 1, scaledConfigurationValue:4).format()
+	}
+	
+    log.debug("Sending configuration")
+	
+    
+    delayBetween(commands, 1250)
+    
+ */
